@@ -14,3 +14,7 @@ jsonwebtoken
 bcryptjs
 dotenv
 nodemon
+pg
+pg-format
+jest
+supertest
