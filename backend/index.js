@@ -11,6 +11,6 @@ api.listen(process.env.PORT || 3000, ()=>{
     console.log("Server started on http://localhost:"+ process.env.PORT || 3000)
 })
 
-api.get("/",()=>{
+api.get("/",(req, res)=>{
     res.send("Api funcionando OK")
 })
