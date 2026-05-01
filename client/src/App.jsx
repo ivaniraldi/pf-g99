@@ -7,6 +7,7 @@ import Detail from "./views/Detail"
 import Gallery from "./views/Gallery"
 import Home from "./views/Home"
 import Profile from "./views/Profile"
+import NotFound from "./views/NotFound"
 import NavBar from "./components/NavBar"
 import Footer from "./components/Footer"
 import { useContext } from "react"
@@ -29,9 +30,9 @@ function App() {
       <Route path="/admin" element={user && user.role === "admin" ? <Admin /> : <Navigate to={"/auth"} />} />
       <Route path="/cart" element={<Cart />} />
       <Route path="/checkout" element={user ? <Checkout /> : <Navigate to={"/auth"} />} />
-      <Route path="/detail" element={<Detail />} />
+      <Route path="/detail/:id" element={<Detail />} />
       <Route path="/gallery" element={<Gallery />} />
-      <Route path="*" element={<h1>404 Not Found</h1>} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
     </div>
     <Footer />

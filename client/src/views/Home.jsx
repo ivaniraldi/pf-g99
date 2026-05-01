@@ -6,11 +6,10 @@ import { ProductContext } from '../context/ProductContext'
 import CTA from '../components/CTA'
 
 export default function Home() {
-    const { products } = useContext(ProductContext)
-    console.log(products)
+  const { products } = useContext(ProductContext)
   return (
     <>
-      <Hero></Hero>  
+      <Hero></Hero>
       <HomeResume products={products}></HomeResume>
       <About></About>
       <CTA></CTA>
