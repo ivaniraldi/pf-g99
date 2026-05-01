@@ -1,4 +1,4 @@
-FRONT
+FRONTEND
 react-bootstrap
 bootstrap
 lucide-icons
@@ -7,7 +7,7 @@ axios
 sweetalerts2
 
 
-BACK
+BACKEND
 express
 cors
 jsonwebtoken
