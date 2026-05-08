@@ -1,16 +1,22 @@
 const express = require("express")
 const cors = require("cors")
-require('dotenv').config()
+const pool = require("./utils/dbConnection")
+const router = require("./routes")
 
+const app = express()
+app.use(express.json())
+app.use(cors())
 
-const api = express()
-api.use(express.json())
-api.use(cors())
+app.use("/", router)
 
-api.listen(process.env.PORT || 3000, ()=>{
-    console.log("Server started on http://localhost:"+ process.env.PORT || 3000)
+app.listen(3000, async () => {
+    console.log("🟢 Servidor iniciado en la URL: [ http://localhost:3000 ] ")
+    try {
+        let result = await pool.query("SELECT NOW()");
+        console.log("💻 Conectado a la BD correctamente a la hora: ", result.rows[0].now)
+    } catch (error) {
+        console.log("🔴Error al conectar a la BD: ", error.message)
+    }
 })
 
-api.get("/",(req, res)=>{
-    res.send("Api funcionando OK")
-})
+module.exports = app
