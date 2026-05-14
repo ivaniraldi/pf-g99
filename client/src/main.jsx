@@ -7,16 +7,19 @@ import { BrowserRouter } from "react-router-dom";
 import { ProductProvider } from "./context/ProductContext.jsx";
 import { GlobalProvider } from "./context/GlobalContext.jsx";
 import { CartProvider } from "./context/CartContext.jsx";
+import { OrderProvider } from "./context/OrderContext.jsx";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
       <GlobalProvider>
-        <CartProvider>
-            <ProductProvider>
-              <App />
-            </ProductProvider>
-        </CartProvider>
+        <OrderProvider>
+          <CartProvider>
+              <ProductProvider>
+                <App />
+              </ProductProvider>
+          </CartProvider>
+        </OrderProvider>
       </GlobalProvider>
     </BrowserRouter>
   </StrictMode>,

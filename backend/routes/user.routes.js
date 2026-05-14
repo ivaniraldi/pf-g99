@@ -1,45 +1,46 @@
 const { Router } = require("express")
 const usersRoutes = Router()
-const { register, login } = require("../controllers/user.controller")
+const { getAllUsers, getUserById, updateUser, deleteUser } = require("../controllers/user.controller")
+const { validateToken, verifyAdmin } = require("../utils/AuthMiddlewares")
 
-
-
-usersRoutes.post("/register", async (req, res) => {
-    const user = req.body
-    const result = await register(user)
-    res.json(result)
-})
-
-
-usersRoutes.post("/login", async (req, res) => {
+// User Management
+usersRoutes.get("/", validateToken, async (req, res) => {
     try {
-        const user = req.body
-        const result = await login(user)
-        res.json(result)
+        const users = await getAllUsers()
+        res.json(users)
     } catch (error) {
-        res.json({ message: error.message })
+        res.status(500).json({ message: error.message })
     }
 })
 
-
-usersRoutes.get("/", async (req, res) => {
-    res.send("Estoy en la ruta de usuarios")
+usersRoutes.get("/:id", validateToken, async (req, res) => {
+    try {
+        const result = await getUserById(req.params.id)
+        if (!result) return res.status(404).json({ message: "Usuario no encontrado" })
+        res.json(result)
+    } catch (error) {
+        res.status(500).json({ message: error.message })
+    }
 })
 
-usersRoutes.post("/", async (req, res) => {
-    res.send("Estoy en la ruta de creación de usuarios")
+usersRoutes.put("/:id", validateToken, async (req, res) => {
+    try {
+        const { id } = req.params
+        const user = req.body
+        const result = await updateUser(id, user)
+        res.json(result)
+    } catch (error) {
+        res.status(500).json({ message: error.message })
+    }
 })
 
-usersRoutes.delete("/:id", async (req, res) => {
-    res.send("Estoy en la ruta de eliminación de usuarios")
-})
-
-usersRoutes.put("/:id", async (req, res) => {
-    res.send("Estoy en la ruta de actualización de usuarios")
-})
-
-usersRoutes.get("/:id", async (req, res) => {
-    res.send("Estoy en la ruta de busqueda de usuarios por id")
+usersRoutes.delete("/:id", verifyAdmin, async (req, res) => {
+    try {
+        await deleteUser(req.params.id)
+        res.json({ message: "Usuario eliminado correctamente" })
+    } catch (error) {
+        res.status(500).json({ message: error.message })
+    }
 })
 
 module.exports = usersRoutes
