@@ -1,23 +1,71 @@
 import React, { useContext, useState } from 'react'
 import { CartContext } from '../context/CartContext'
+import { GlobalContext } from '../context/GlobalContext'
+import { OrderContext } from '../context/OrderContext'
 import { useNavigate, Link } from 'react-router-dom'
-import { PartyPopper, ShieldCheck, ShoppingBag } from 'lucide-react'
+import { PartyPopper, ShieldCheck, ShoppingBag, Loader2 } from 'lucide-react'
 
 export default function Checkout() {
   const { cartItems, totalItemsPrice, shippingPrice, totalPrice, clearCart } = useContext(CartContext);
+  const { user } = useContext(GlobalContext);
+  const { createOrder } = useContext(OrderContext);
   const navigate = useNavigate();
   const [isOrdered, setIsOrdered] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const total = totalPrice;
+  const [formData, setFormData] = useState({
+    name: user?.name?.split(' ')[0] || '',
+    lastName: user?.name?.split(' ')[1] || '',
+    email: user?.email || '',
+    street: user?.address?.street || '',
+    city: user?.address?.city || '',
+    postalCode: user?.address?.postalCode || '',
+    country: user?.address?.country || 'Chile',
+    phone: user?.phone || '',
+    paymentMethod: 'Credit Card'
+  });
 
-  const handleOrder = (e) => {
-    e.preventDefault();
-    setIsOrdered(true);
-    setTimeout(() => {
-      clearCart();
-      navigate('/');
-    }, 3000);
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
+
+  const handleOrder = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    const orderData = {
+      items: cartItems.map(item => ({
+        productId: item.product.id,
+        quantity: item.quantity,
+        size: item.size,
+        color: item.color
+      })),
+      paymentMethod: formData.paymentMethod,
+      shippingAddress: {
+        street: formData.street,
+        city: formData.city,
+        postalCode: formData.postalCode,
+        country: formData.country
+      }
+    };
+
+    const result = await createOrder(orderData);
+
+    if (result.success) {
+      setIsOrdered(true);
+      setTimeout(() => {
+        clearCart();
+        navigate('/profile');
+      }, 3000);
+    } else {
+      setError(result.message || "Error al procesar el pedido");
+      setLoading(false);
+    }
+  };
+
 
   if (isOrdered) {
     return (
@@ -61,34 +109,45 @@ export default function Checkout() {
         {/* Formulario */}
         <div className='col-lg-7'>
           <form onSubmit={handleOrder}>
-            {/* ... shipping info card ... */}
-            {/* OMITTING PREVIOUS CARDS TO KEEP DIFF CLEAN, ASSUMING I SHOULD REPLACE ALL ICONS */}
+            {error && (
+              <div className='alert alert-danger mb-4 rounded-4' role='alert'>
+                {error}
+              </div>
+            )}
             <div className='premium-card glass p-4 mb-4'>
               <h4 className='mb-4' style={{ fontSize: '1.25rem' }}>Información de Envío</h4>
               <div className='row g-3'>
                 <div className='col-md-6'>
                   <label className='form-label fw-600' style={{ fontSize: '0.85rem' }}>Nombre</label>
-                  <input type='text' className='premium-input' required placeholder='Ej: Juan' />
+                  <input type='text' name="name" value={formData.name} onChange={handleInputChange} className='premium-input' required placeholder='Ej: Juan' />
                 </div>
                 <div className='col-md-6'>
                   <label className='form-label fw-600' style={{ fontSize: '0.85rem' }}>Apellido</label>
-                  <input type='text' className='premium-input' required placeholder='Ej: Pérez' />
+                  <input type='text' name="lastName" value={formData.lastName} onChange={handleInputChange} className='premium-input' required placeholder='Ej: Pérez' />
                 </div>
                 <div className='col-12'>
                   <label className='form-label fw-600' style={{ fontSize: '0.85rem' }}>Correo Electrónico</label>
-                  <input type='email' className='premium-input' required placeholder='juan@ejemplo.com' />
+                  <input type='email' name="email" value={formData.email} onChange={handleInputChange} className='premium-input' required placeholder='juan@ejemplo.com' />
                 </div>
                 <div className='col-12'>
                   <label className='form-label fw-600' style={{ fontSize: '0.85rem' }}>Dirección de Entrega</label>
-                  <input type='text' className='premium-input' required placeholder='Calle, Número, Depto' />
+                  <input type='text' name="street" value={formData.street} onChange={handleInputChange} className='premium-input' required placeholder='Calle, Número, Depto' />
                 </div>
                 <div className='col-md-6'>
                   <label className='form-label fw-600' style={{ fontSize: '0.85rem' }}>Ciudad</label>
-                  <input type='text' className='premium-input' required placeholder='Santiago' />
+                  <input type='text' name="city" value={formData.city} onChange={handleInputChange} className='premium-input' required placeholder='Santiago' />
                 </div>
-                <div className='col-md-6'>
+                <div className='col-md-3'>
+                  <label className='form-label fw-600' style={{ fontSize: '0.85rem' }}>Código Postal</label>
+                  <input type='text' name="postalCode" value={formData.postalCode} onChange={handleInputChange} className='premium-input' required placeholder='12345' />
+                </div>
+                <div className='col-md-3'>
+                  <label className='form-label fw-600' style={{ fontSize: '0.85rem' }}>País</label>
+                  <input type='text' name="country" value={formData.country} onChange={handleInputChange} className='premium-input' required placeholder='Chile' />
+                </div>
+                <div className='col-md-12'>
                   <label className='form-label fw-600' style={{ fontSize: '0.85rem' }}>Teléfono</label>
-                  <input type='tel' className='premium-input' required placeholder='+56 9 1234 5678' />
+                  <input type='tel' name="phone" value={formData.phone} onChange={handleInputChange} className='premium-input' required placeholder='+56 9 1234 5678' />
                 </div>
               </div>
             </div>
@@ -97,7 +156,7 @@ export default function Checkout() {
               <h4 className='mb-4' style={{ fontSize: '1.25rem' }}>Método de Pago</h4>
               <div className='d-flex flex-column gap-3'>
                 <label className='d-flex align-items-center gap-3 p-3 border rounded-3' style={{ cursor: 'pointer' }}>
-                  <input type='radio' name='payment' defaultChecked style={{ width: '20px', height: '20px', accentColor: 'var(--primary)' }} />
+                  <input type='radio' name='paymentMethod' value="Credit Card" checked={formData.paymentMethod === 'Credit Card'} onChange={handleInputChange} style={{ width: '20px', height: '20px', accentColor: 'var(--primary)' }} />
                   <div className='d-flex align-items-center gap-2'>
                     <img src='https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg' alt='Visa' style={{ height: '12px' }} />
                     <img src='https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg' alt='Mastercard' style={{ height: '18px' }} />
@@ -105,7 +164,7 @@ export default function Checkout() {
                   </div>
                 </label>
                 <label className='d-flex align-items-center gap-3 p-3 border rounded-3' style={{ cursor: 'pointer', opacity: 0.6 }}>
-                  <input type='radio' name='payment' style={{ width: '20px', height: '20px', accentColor: 'var(--primary)' }} disabled />
+                  <input type='radio' name='paymentMethod' value="PayPal" checked={formData.paymentMethod === 'PayPal'} onChange={handleInputChange} style={{ width: '20px', height: '20px', accentColor: 'var(--primary)' }} disabled />
                   <div className='d-flex align-items-center gap-2'>
                     <img src='https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg' alt='PayPal' style={{ height: '18px' }} />
                     <span style={{ fontWeight: '600' }}>PayPal (Próximamente)</span>
@@ -114,11 +173,12 @@ export default function Checkout() {
               </div>
             </div>
 
-            <button type='submit' className='premium-button premium-button-primary w-100 mt-4' style={{ padding: '18px', fontSize: '1.1rem' }}>
-              Confirmar y Pagar ${total.toFixed(2)}
+            <button type='submit' disabled={loading} className='premium-button premium-button-primary w-100 mt-4' style={{ padding: '18px', fontSize: '1.1rem' }}>
+              {loading ? <><Loader2 className='spinner-border-sm me-2 animate-spin' size={20} /> Procesando...</> : `Confirmar y Pagar $${totalPrice.toFixed(2)}`}
             </button>
           </form>
         </div>
+
 
         {/* Resumen */}
         <div className='col-lg-5'>

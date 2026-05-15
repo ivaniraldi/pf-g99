@@ -1,13 +1,43 @@
-import React, { useState } from 'react'
-import { Plus, Pencil, Trash2, Search, Filter, Save, X } from 'lucide-react'
-import { productsMock as mockProducts } from '../libs/dataMock'
+import React, { useEffect, useState, useContext } from 'react'
+import { Plus, Pencil, Trash2, Search, Filter, Save, X, Loader2 } from 'lucide-react'
+import { GlobalContext } from '../context/GlobalContext'
 import { Modal, Form } from 'react-bootstrap'
 
 export default function AdminProducts() {
-  const [products, setProducts] = useState(mockProducts);
+  const { token } = useContext(GlobalContext);
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [currentProduct, setCurrentProduct] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const API_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch(`${API_URL}/products`);
+      const data = await response.json();
+      setProducts(data);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch(`${API_URL}/categories`);
+      const data = await response.json();
+      setCategories(data);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchProducts();
+    fetchCategories();
+  }, []);
 
   // Form states
   const [formData, setFormData] = useState({
@@ -17,43 +47,85 @@ export default function AdminProducts() {
     stock: 0,
     imageUrl: '',
     description: '',
-    category: { name: 'Camisetas' }
+    categoryId: '',
+    slug: '',
+    material: ''
   });
 
   const handleClose = () => {
     setShowModal(false);
     setCurrentProduct(null);
-    setFormData({ name: '', brand: '', price: 0, stock: 0, imageUrl: '', description: '', category: { name: 'Camisetas' } });
+    setFormData({ name: '', brand: '', price: 0, stock: 0, imageUrl: '', description: '', categoryId: '', slug: '', material: '' });
   };
 
   const handleShow = (product = null) => {
     if (product) {
       setCurrentProduct(product);
-      setFormData(product);
+      setFormData({
+        ...product,
+        categoryId: product.category?.id || '',
+        imageUrl: product.imageUrl || (product.images && product.images[0]) || ''
+      });
     }
     setShowModal(true);
   };
 
   const handleSave = async (e) => {
     e.preventDefault();
-    // Simulate API call
-    if (currentProduct) {
-      // Update
-      setProducts(products.map(p => p.id === currentProduct.id ? { ...formData, id: currentProduct.id } : p));
-    } else {
-      // Create
-      const newProduct = { ...formData, id: Date.now() };
-      setProducts([newProduct, ...products]);
+    setLoading(true);
+
+    const method = currentProduct ? 'PUT' : 'POST';
+    const url = currentProduct ? `${API_URL}/products/${currentProduct.id}` : `${API_URL}/products`;
+
+    // Ensure slug is generated if missing
+    const payload = {
+        ...formData,
+        slug: formData.slug || formData.name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, ''),
+        images: [formData.imageUrl]
+    };
+
+    try {
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        await fetchProducts();
+        handleClose();
+      } else {
+        const err = await response.json();
+        alert(`Error: ${err.message}`);
+      }
+    } catch (error) {
+      console.error("Error saving product:", error);
+    } finally {
+      setLoading(false);
     }
-    handleClose();
   };
 
   const handleDelete = async (id) => {
     if (window.confirm('¿Estás seguro de eliminar este producto?')) {
-      // Simulate API call
-      setProducts(products.filter(p => p.id !== id));
+      try {
+        const response = await fetch(`${API_URL}/products/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (response.ok) {
+          setProducts(products.filter(p => p.id !== id));
+        }
+      } catch (error) {
+        console.error("Error deleting product:", error);
+      }
     }
   };
+
 
   const filteredProducts = products.filter(p => 
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -165,7 +237,7 @@ export default function AdminProducts() {
         <Modal.Body className='p-4'>
           <Form onSubmit={handleSave}>
             <div className='row g-3'>
-              <div className='col-md-8'>
+              <div className='col-md-6'>
                 <Form.Group className='mb-3'>
                   <Form.Label className='fw-bold small text-muted'>NOMBRE DEL PRODUCTO</Form.Label>
                   <Form.Control 
@@ -178,7 +250,20 @@ export default function AdminProducts() {
                   />
                 </Form.Group>
               </div>
-              <div className='col-md-4'>
+              <div className='col-md-6'>
+                <Form.Group className='mb-3'>
+                  <Form.Label className='fw-bold small text-muted'>SLUG (URL)</Form.Label>
+                  <Form.Control 
+                    type='text' 
+                    className='premium-input' 
+                    required 
+                    value={formData.slug}
+                    onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                    placeholder='ej-camiseta-basica'
+                  />
+                </Form.Group>
+              </div>
+              <div className='col-md-6'>
                 <Form.Group className='mb-3'>
                   <Form.Label className='fw-bold small text-muted'>MARCA</Form.Label>
                   <Form.Control 
@@ -193,6 +278,23 @@ export default function AdminProducts() {
               </div>
               <div className='col-md-6'>
                 <Form.Group className='mb-3'>
+                  <Form.Label className='fw-bold small text-muted'>CATEGORÍA</Form.Label>
+                  <Form.Select 
+                    className='premium-input' 
+                    required 
+                    value={formData.categoryId}
+                    onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+                    style={{ appearance: 'auto' }}
+                  >
+                    <option value="">Seleccionar categoría</option>
+                    {categories.map(cat => (
+                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              </div>
+              <div className='col-md-4'>
+                <Form.Group className='mb-3'>
                   <Form.Label className='fw-bold small text-muted'>PRECIO ($)</Form.Label>
                   <Form.Control 
                     type='number' 
@@ -204,15 +306,27 @@ export default function AdminProducts() {
                   />
                 </Form.Group>
               </div>
-              <div className='col-md-6'>
+              <div className='col-md-4'>
                 <Form.Group className='mb-3'>
-                  <Form.Label className='fw-bold small text-muted'>STOCK INICIAL</Form.Label>
+                  <Form.Label className='fw-bold small text-muted'>STOCK</Form.Label>
                   <Form.Control 
                     type='number' 
                     className='premium-input' 
                     required 
                     value={formData.stock}
                     onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                  />
+                </Form.Group>
+              </div>
+              <div className='col-md-4'>
+                <Form.Group className='mb-3'>
+                  <Form.Label className='fw-bold small text-muted'>MATERIAL</Form.Label>
+                  <Form.Control 
+                    type='text' 
+                    className='premium-input' 
+                    value={formData.material}
+                    onChange={(e) => setFormData({ ...formData, material: e.target.value })}
+                    placeholder='Ej: Algodón'
                   />
                 </Form.Group>
               </div>
@@ -244,6 +358,7 @@ export default function AdminProducts() {
                 </Form.Group>
               </div>
             </div>
+
             <div className='d-flex justify-content-end gap-2 mt-4'>
               <button type='button' className='btn btn-light px-4' onClick={handleClose} style={{ borderRadius: '12px' }}>
                 Cancelar

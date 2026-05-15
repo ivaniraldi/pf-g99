@@ -7,9 +7,18 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleSubmit = (e) => {
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    login({ email, password });
+    setError("");
+    setLoading(true);
+    const result = await login({ email, password });
+    if (!result.success) {
+      setError(result.message || "Credenciales inválidas");
+      setLoading(false);
+    }
   };
 
   return (
@@ -19,7 +28,10 @@ export default function Login() {
         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Ingresa tus credenciales para continuar</p>
       </div>
 
+      {error && <div className='alert alert-danger py-2 mb-3' style={{ fontSize: '0.85rem' }}>{error}</div>}
+
       <form onSubmit={handleSubmit} className='d-flex flex-column gap-3'>
+
         <div className='position-relative'>
           <Mail className='position-absolute top-50 translate-middle-y ms-3 text-muted' size={18} />
           <input
@@ -52,9 +64,10 @@ export default function Login() {
           <a href='#' style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: '600', textDecoration: 'none' }}>¿Olvidaste tu clave?</a>
         </div>
 
-        <button type="submit" className='premium-button premium-button-primary w-100 d-flex align-items-center justify-content-center gap-2 py-3'>
-          <LogIn size={20} /> Iniciar Sesión
+        <button type="submit" disabled={loading} className='premium-button premium-button-primary w-100 d-flex align-items-center justify-content-center gap-2 py-3'>
+          {loading ? "Iniciando sesión..." : <><LogIn size={20} /> Iniciar Sesión</>}
         </button>
+
       </form>
     </div>
   )

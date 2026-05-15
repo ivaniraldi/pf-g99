@@ -5,9 +5,19 @@ const getAllOrders = async () => {
     return result.rows.map(row => ({
         ...row,
         total: parseFloat(row.total),
-        createdAt: row.placed_at
+        placedAt: row.placed_at
     }))
 }
+
+const getOrdersByUserId = async (userId) => {
+    const result = await pool.query("SELECT * FROM orders WHERE user_id = $1", [userId])
+    return result.rows.map(row => ({
+        ...row,
+        total: parseFloat(row.total),
+        placedAt: row.placed_at
+    }))
+}
+
 
 const getOrderById = async (id) => {
     const orderRes = await pool.query("SELECT * FROM orders WHERE id = $1", [id])
@@ -113,4 +123,4 @@ const deleteOrder = async (id) => {
     return result.rows[0]
 }
 
-module.exports = { getAllOrders, getOrderById, createOrder, updateOrder, deleteOrder }
+module.exports = { getAllOrders, getOrdersByUserId, getOrderById, createOrder, updateOrder, deleteOrder }

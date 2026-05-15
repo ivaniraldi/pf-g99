@@ -1,16 +1,22 @@
 const { Router } = require("express")
 const orderRoutes = Router()
-const { getAllOrders, getOrderById, createOrder, updateOrder, deleteOrder } = require("../controllers/order.controller")
+const { getAllOrders, getOrdersByUserId, getOrderById, createOrder, updateOrder, deleteOrder } = require("../controllers/order.controller")
 const { validateToken, verifyAdmin } = require("../utils/AuthMiddlewares")
 
 orderRoutes.get("/", validateToken, async (req, res) => {
     try {
-        const orders = await getAllOrders()
+        let orders;
+        if (req.user.role === 'admin') {
+            orders = await getAllOrders()
+        } else {
+            orders = await getOrdersByUserId(req.user.id)
+        }
         res.json(orders)
     } catch (error) {
         res.status(500).json({ message: error.message })
     }
 })
+
 
 orderRoutes.post("/", validateToken, async (req, res) => {
     try {

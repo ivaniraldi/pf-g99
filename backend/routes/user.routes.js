@@ -4,7 +4,18 @@ const { getAllUsers, getUserById, updateUser, deleteUser } = require("../control
 const { validateToken, verifyAdmin } = require("../utils/AuthMiddlewares")
 
 // User Management
+usersRoutes.get("/profile", validateToken, async (req, res) => {
+    try {
+        const result = await getUserById(req.user.id)
+        if (!result) return res.status(404).json({ message: "Usuario no encontrado" })
+        res.json(result)
+    } catch (error) {
+        res.status(500).json({ message: error.message })
+    }
+})
+
 usersRoutes.get("/", validateToken, async (req, res) => {
+
     try {
         const users = await getAllUsers()
         res.json(users)

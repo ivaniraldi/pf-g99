@@ -1,13 +1,33 @@
-import React, { useState } from 'react'
-import { Pencil, Trash2, UserPlus, Shield, Search, Save, X } from 'lucide-react'
-import { usersMock } from '../libs/dataMock'
+import React, { useEffect, useState, useContext, useCallback } from 'react'
+import { Pencil, Trash2, UserPlus, Shield, Search, Save, X, Loader2 } from 'lucide-react'
+import { GlobalContext } from '../context/GlobalContext'
 import { Modal, Form } from 'react-bootstrap'
 
 export default function AdminUsers() {
-  const [users, setUsers] = useState(usersMock);
+  const { token } = useContext(GlobalContext);
+  const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const API_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+
+  const fetchUsers = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_URL}/users`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      setUsers(data);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    }
+  }, [API_URL, token]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -28,15 +48,46 @@ export default function AdminUsers() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    setUsers(users.map(u => u.id === currentUser.id ? { ...u, ...formData } : u));
-    handleClose();
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/users/${currentUser.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(formData)
+      });
+
+      if (response.ok) {
+        await fetchUsers();
+        handleClose();
+      }
+    } catch (error) {
+      console.error("Error updating user:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDelete = async (id) => {
     if (window.confirm('¿Estás seguro de eliminar este usuario?')) {
-      setUsers(users.filter(u => u.id !== id));
+      try {
+        const response = await fetch(`${API_URL}/users/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (response.ok) {
+          setUsers(users.filter(u => u.id !== id));
+        }
+      } catch (error) {
+        console.error("Error deleting user:", error);
+      }
     }
   };
+
 
   const filteredUsers = users.filter(u => 
     u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -110,8 +161,9 @@ export default function AdminUsers() {
                   </span>
                 </td>
                 <td className='py-3' style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                  28/04/2026
+                  {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'N/A'}
                 </td>
+
                 <td className='py-3 text-end pe-3'>
                   <div className='d-flex justify-content-end gap-1'>
                     <button 

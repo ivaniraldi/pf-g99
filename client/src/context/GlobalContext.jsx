@@ -9,22 +9,32 @@ const GlobalProvider = ({ children }) => {
   const API_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
 
   useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
-  }, []);
+    const fetchUser = async () => {
+      if (token) {
+        try {
+          const response = await fetch(`${API_URL}/users/profile`, {
+            headers: { "Authorization": `Bearer ${token}` }
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setUser(data);
+            localStorage.setItem("user", JSON.stringify(data));
+          } else if (response.status === 401) {
+            logout();
+          }
+        } catch (error) {
+          console.error("Error fetching user profile:", error);
+          const savedUser = localStorage.getItem("user");
+          if (savedUser) setUser(JSON.parse(savedUser));
+        }
+      }
+    };
+    fetchUser();
+  }, [token, API_URL]);
+
 
   const login = async (userData) => {
-    // --- MOCK ---
-    console.log("login con estos datos: ", userData);
-    let mockUser = usersMock[1]
-    localStorage.setItem("user", JSON.stringify(mockUser));
-    setUser(mockUser);
-    return { success: true };
 
-    // --- API ---
-    /*
     try {
       const response = await fetch(`${API_URL}/login`, {
         method: "POST",
@@ -47,7 +57,6 @@ const GlobalProvider = ({ children }) => {
       console.error("Login error:", error);
       return { success: false, message: "Error de conexión" };
     }
-    */
   };
 
   const logout = () => {
@@ -58,12 +67,8 @@ const GlobalProvider = ({ children }) => {
   };
 
   const register = async (userData) => {
-    // --- MOCK ---
-    login(userData);
-    return { success: true };
-
-    // --- API ---
-    /*
+  
+ 
     try {
       const response = await fetch(`${API_URL}/register`, {
         method: "POST",
@@ -71,6 +76,7 @@ const GlobalProvider = ({ children }) => {
         body: JSON.stringify(userData),
       });
 
+      console.log("Register response:", response, "Datos de usuario:", userData); // Verificar la respuesta del servidor
       const data = await response.json();
 
       if (response.ok) {
@@ -82,7 +88,6 @@ const GlobalProvider = ({ children }) => {
       console.error("Register error:", error);
       return { success: false, message: "Error de conexión" };
     }
-    */
   };
 
   return (

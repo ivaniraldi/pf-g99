@@ -6,15 +6,40 @@ import { Truck, ArrowLeft, Minus, Plus, ShoppingBag } from 'lucide-react'
 
 export default function Detail() {
   const { id } = useParams();
-  const { products } = useContext(ProductContext);
+  const { getProductById } = useContext(ProductContext);
   const { addToCart } = useContext(CartContext);
   const navigate = useNavigate();
 
-  const product = products.find(p => p.id === id);
-
-  const [selectedSize, setSelectedSize] = useState(product?.availableSizes?.[0] || 'M');
-  const [selectedColor, setSelectedColor] = useState(product?.colors?.[0] || 'Blanco');
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedSize, setSelectedSize] = useState('M');
+  const [selectedColor, setSelectedColor] = useState('Blanco');
   const [quantity, setQuantity] = useState(1);
+
+  useEffect(() => {
+    const fetchProduct = async () => {
+      setLoading(true);
+      const data = await getProductById(id);
+      if (data) {
+        setProduct(data);
+        if (data.availableSizes?.length > 0) setSelectedSize(data.availableSizes[0]);
+        if (data.colors?.length > 0) setSelectedColor(data.colors[0]);
+      }
+      setLoading(false);
+    };
+    fetchProduct();
+  }, [id, getProductById]);
+
+  if (loading) {
+    return (
+      <div className='py-5 text-center'>
+        <div className='spinner-border text-primary' role='status'>
+          <span className='visually-hidden'>Cargando...</span>
+        </div>
+        <p className='mt-2'>Cargando producto...</p>
+      </div>
+    );
+  }
 
   if (!product) {
     return (
@@ -26,6 +51,7 @@ export default function Detail() {
       </div>
     );
   }
+
 
   const handleAddToCart = () => {
     addToCart(product, quantity, selectedSize, selectedColor);

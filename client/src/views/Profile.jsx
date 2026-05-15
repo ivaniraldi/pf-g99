@@ -1,11 +1,18 @@
-import React, { useContext } from 'react'
+import React, { useContext, useEffect } from 'react'
 import { GlobalContext } from '../context/GlobalContext';
-import { User, ShoppingBag, MapPin, Phone, Mail, ChevronRight } from 'lucide-react';
+import { OrderContext } from '../context/OrderContext';
+import { User, ShoppingBag, MapPin, Phone, Mail, ChevronRight, Loader2 } from 'lucide-react';
 
 export default function Profile() {
   const { user } = useContext(GlobalContext);
+  const { orders, getUserOrders } = useContext(OrderContext);
 
-  if (!user) return <div className='py-5 text-center'>Cargando perfil...</div>;
+  useEffect(() => {
+    getUserOrders();
+  }, [getUserOrders]);
+
+  if (!user) return <div className='py-5 text-center'><Loader2 className="animate-spin d-inline-block" /> Cargando perfil...</div>;
+
 
   return (
     <div className='py-5'>
@@ -85,7 +92,7 @@ export default function Profile() {
               <ShoppingBag size={22} style={{ color: 'var(--primary)' }} /> Historial de Órdenes
             </h4>
             
-            {user.orders && user.orders.length > 0 ? (
+            {orders && orders.length > 0 ? (
               <div className='table-responsive'>
                 <table className='table table-hover align-middle'>
                   <thead>
@@ -98,14 +105,14 @@ export default function Profile() {
                     </tr>
                   </thead>
                   <tbody>
-                    {user.orders.map(order => (
+                    {[...orders].reverse().map(order => (
                       <tr key={order.id} style={{ fontSize: '0.9rem' }}>
-                        <td className='fw-bold'>#{order.id.slice(-6)}</td>
-                        <td>30/04/2026</td>
-                        <td className='fw-bold'>${order.total.toFixed(2)}</td>
+                        <td className='fw-bold'>#{String(order.id).padStart(5, '0')}</td>
+                        <td>{new Date(order.placedAt || order.placed_at).toLocaleDateString()}</td>
+                        <td className='fw-bold'>${parseFloat(order.total).toFixed(2)}</td>
                         <td>
-                          <span className={`badge rounded-pill ${order.status === 'delivered' ? 'bg-success' : 'bg-warning'}`} style={{ padding: '6px 12px' }}>
-                            {order.status === 'delivered' ? 'Entregada' : 'En proceso'}
+                          <span className={`badge rounded-pill ${order.status === 'delivered' ? 'bg-success' : 'bg-warning'}`} style={{ padding: '6px 12px', textTransform: 'capitalize' }}>
+                            {order.status === 'delivered' ? 'Entregada' : order.status === 'processing' ? 'En proceso' : order.status}
                           </span>
                         </td>
                         <td>
@@ -118,6 +125,7 @@ export default function Profile() {
                   </tbody>
                 </table>
               </div>
+
             ) : (
               <div className='text-center py-5'>
                 <div className='mb-4 d-inline-block p-4 rounded-circle' style={{ backgroundColor: 'rgba(99, 102, 241, 0.05)', color: 'var(--text-muted)' }}>

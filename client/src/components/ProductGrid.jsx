@@ -178,21 +178,32 @@ const FilterContent = ({
 };
 
 export default function ProductGrid({ products }) {
+
+  const categories = useMemo(() => [...new Set(products.map(p => p.category?.name || p.category))], [products]);
+  const brands = useMemo(() => [...new Set(products.map(p => p.brand))], [products]);
+  const colors = useMemo(() => {
+    const allColors = products.flatMap(p => p.colors || []);
+    return [...new Set(allColors)];
+  }, [products]);
+
+  // Find actual max price from products
+  const absoluteMaxPrice = useMemo(() => {
+    if (products.length === 0) return 200;
+    return Math.ceil(Math.max(...products.map(p => parseFloat(p.price))));
+  }, [products]);
+
   const [searchTerm, setSearchTerm] = useState("");
-  const [maxPrice, setMaxPrice] = useState(200);
+  const [maxPrice, setMaxPrice] = useState(absoluteMaxPrice);
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [selectedColor, setSelectedColor] = useState("");
   const [selectedBrand, setSelectedBrand] = useState("");
   const [sortBy, setSortBy] = useState("Recommended");
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
-  // Extract dynamic filters from products
-  const categories = useMemo(() => [...new Set(products.map(p => p.category.name))], [products]);
-  const brands = useMemo(() => [...new Set(products.map(p => p.brand))], [products]);
-  const colors = useMemo(() => {
-    const allColors = products.flatMap(p => p.colors || []);
-    return [...new Set(allColors)];
-  }, [products]);
+  // Sync maxPrice when products change
+  useEffect(() => {
+    setMaxPrice(absoluteMaxPrice);
+  }, [absoluteMaxPrice]);
 
   const handleCategoryChange = (cat) => {
     if (selectedCategories.includes(cat)) {
@@ -201,6 +212,7 @@ export default function ProductGrid({ products }) {
       setSelectedCategories([...selectedCategories, cat]);
     }
   };
+
 
   const filteredProducts = useMemo(() => {
     let result = products.filter(product => {
@@ -222,6 +234,10 @@ export default function ProductGrid({ products }) {
       result.sort((a, b) => b.price - a.price);
     }
 
+    if (result.length === 0) {
+      console.log("No se encontraron productos con los filtros aplicados, devolviendo lista sin filtrar.");
+        return products; // Devolver la lista sin filtrar si no hay resultados
+    }
     return result;
   }, [products, searchTerm, maxPrice, selectedCategories, selectedColor, selectedBrand, sortBy]);
 

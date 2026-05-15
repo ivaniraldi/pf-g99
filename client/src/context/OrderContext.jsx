@@ -1,4 +1,4 @@
-import { createContext, useState, useContext } from "react";
+import { createContext, useState, useContext, useCallback } from "react";
 import { GlobalContext } from "./GlobalContext";
 
 const OrderContext = createContext();
@@ -9,6 +9,8 @@ const OrderProvider = ({ children }) => {
     const API_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
 
     const createOrder = async (orderData) => {
+        if (!token) return { success: false, message: "Debes iniciar sesión para comprar" };
+        
         try {
             const response = await fetch(`${API_URL}/orders`, {
                 method: "POST",
@@ -24,6 +26,7 @@ const OrderProvider = ({ children }) => {
 
             const data = await response.json();
             if (response.ok) {
+                setOrders(prev => [...prev, data]);
                 return { success: true, data };
             } else {
                 return { success: false, message: data.message };
@@ -34,18 +37,23 @@ const OrderProvider = ({ children }) => {
         }
     }
 
-    const getUserOrders = async () => {
-        if (!token) return;
+    const getUserOrders = useCallback(async () => {
+        if (!token) {
+            setOrders([]);
+            return;
+        }
         try {
             const response = await fetch(`${API_URL}/orders`, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
-            const data = await response.json();
-            setOrders(data);
+            if (response.ok) {
+                const data = await response.json();
+                setOrders(data);
+            }
         } catch (error) {
             console.error("Error fetching orders:", error);
         }
-    }
+    }, [token, API_URL]);
 
     return (
         <OrderContext.Provider value={{ createOrder, getUserOrders, orders }}>
@@ -55,3 +63,4 @@ const OrderProvider = ({ children }) => {
 }
 
 export { OrderContext, OrderProvider }
+

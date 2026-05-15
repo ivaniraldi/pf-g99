@@ -3,30 +3,31 @@ require("dotenv").config()
 
 
 const validateToken = (req, res, next) => {
-    const token = req.headers["authorization"]?.split(" ")[1]
-    if (!token) return res.json({ message: "Token no proporcionado" })
+    const authHeader = req.headers["authorization"];
+    const token = authHeader && authHeader.split(" ")[1];
+    
+    if (!token) return res.status(401).json({ message: "Token no proporcionado" });
+    
     try {
-        const decodedToken = jwt.verify(token, process.env.JWT_SECRET)
-        next()
+        const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = decodedToken;
+        next();
     } catch (error) {
-        return res.json({ message: "Token inválido" })
+        return res.status(401).json({ message: "Token inválido" });
     }
-
 }
+
 
 const verifyAdmin = (req, res, next) => {
-    const token = req.headers["authorization"]?.split(" ")[1]
-    if (!token) return res.json({ message: "Token no proporcionado" })
-    try {
-        const user = jwt.decode(token)
-        if (user.role !== "admin") {
-            return res.json({ message: "No tienes permisos para realizar esta accion" })
+    validateToken(req, res, () => {
+        if (req.user && req.user.role === "admin") {
+            next();
+        } else {
+            return res.status(403).json({ message: "No tienes permisos para realizar esta acción" });
         }
-        next()
-    } catch (error) {
-        res.json({ message: "Token inválido" })
-    }
+    });
 }
+
 
 module.exports = { validateToken, verifyAdmin }
 

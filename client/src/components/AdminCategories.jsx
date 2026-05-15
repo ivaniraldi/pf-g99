@@ -1,13 +1,31 @@
-import React, { useState } from 'react'
-import { Plus, Pencil, Trash2, Search, Save, X } from 'lucide-react'
-import { categories as mockCategories } from '../libs/dataMock'
+import React, { useEffect, useState, useContext, useCallback } from 'react'
+import { Plus, Pencil, Trash2, Search, Save, X, Loader2 } from 'lucide-react'
+import { GlobalContext } from '../context/GlobalContext'
 import { Modal, Form } from 'react-bootstrap'
 
 export default function AdminCategories() {
-  const [categories, setCategories] = useState(mockCategories);
+  const { token } = useContext(GlobalContext);
+  const [categories, setCategories] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [currentCategory, setCurrentCategory] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const API_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_URL}/categories`);
+      const data = await response.json();
+      setCategories(data);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  }, [API_URL]);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -30,19 +48,53 @@ export default function AdminCategories() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (currentCategory) {
-      setCategories(categories.map(c => c.id === currentCategory.id ? { ...formData, id: currentCategory.id } : c));
-    } else {
-      setCategories([...categories, { ...formData, id: categories.length + 1 }]);
+    setLoading(true);
+
+    const method = currentCategory ? 'PUT' : 'POST';
+    const url = currentCategory ? `${API_URL}/categories/${currentCategory.id}` : `${API_URL}/categories`;
+
+    try {
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(formData)
+      });
+
+      if (response.ok) {
+        await fetchCategories();
+        handleClose();
+      } else {
+        const err = await response.json();
+        alert(`Error: ${err.message}`);
+      }
+    } catch (error) {
+      console.error("Error saving category:", error);
+    } finally {
+      setLoading(false);
     }
-    handleClose();
   };
 
   const handleDelete = async (id) => {
     if (window.confirm('¿Estás seguro de eliminar esta categoría?')) {
-      setCategories(categories.filter(c => c.id !== id));
+      try {
+        const response = await fetch(`${API_URL}/categories/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (response.ok) {
+          setCategories(categories.filter(c => c.id !== id));
+        }
+      } catch (error) {
+        console.error("Error deleting category:", error);
+      }
     }
   };
+
 
   const filteredCategories = categories.filter(c => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase())
